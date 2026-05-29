@@ -9,27 +9,10 @@ services:
     ports:
       - "3000:3000"
     volumes:
-      # Mount the database to persist data across container restarts
-      - ./seo_midterm.db:/app/seo_midterm.db
       # Mount the local image storage directory
       - ./E_drive:/app/E_drive
       # Optional: Mount the environment variables securely
       - ./.env.local:/app/.env.local
     environment:
       - NODE_ENV=production
-    restart: unless-stopped
-
-  silicon-pulse-autopilot:
-    build:
-      context: .
-      dockerfile: Dockerfile.python
-    container_name: silicon-pulse-autopilot
-    volumes:
-      # The Python script needs the env file to get SMTP keys
-      - ./.env.local:/app/.env.local
-    environment:
-      # Tell the Python script to connect to the internal Docker network of the Node.js server
-      - API_BASE=http://silicon-pulse-web:3000/api/pipeline
-    depends_on:
-      - silicon-pulse-web
     restart: unless-stopped

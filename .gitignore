@@ -9,13 +9,8 @@ coverage/
 
 # BẢO MẬT CƠ SỞ DỮ LIỆU
 web_data.db
-seo_midterm.db
 
-# CHẶN TOÀN BỘ BOT SEO (BẢO MẬT MÃ NGUỒN CỤC BỘ)
-seo-project/
-venv/
-__pycache__/
-*.py
+# FILES DỮ LIỆU ĐỘNG
 E_drive/
 *.pdf
 Tài liệu nền tảng, tin tức AI, tin tức bán dẫn/
