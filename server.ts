@@ -21,7 +21,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim() === '') {
   console.error("FATAL ERROR: JWT_SECRET is not defined in .env.local. Shutting down for defense-grade security.");
