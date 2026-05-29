@@ -1,5 +1,5 @@
 # Sử dụng Node.js 20 làm base image
-FROM node:20-alpine
+FROM node:20
 
 # Thư mục làm việc trong container
 WORKDIR /app
