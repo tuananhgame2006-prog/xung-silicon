@@ -1,0 +1,6 @@
+{
+  "name": "AI SEO EMPIRE - COMMAND CENTER",
+  "description": "Monolithic Sequential SEO AI Pipeline Dashboard orchestrating a swarm of 5 AI agents to automate keyword discovery, content drafting, SEO scoring, CMS publishing, and ranking simulation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

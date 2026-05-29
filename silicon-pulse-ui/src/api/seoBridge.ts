@@ -1,0 +1,200 @@
+// API Bridge Layer: Isolates the UI from the Python SEO Backend
+
+const API_BASE_URL = 'http://localhost:3000/api';
+
+export interface Article {
+  id: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  category: string;
+  author: string;
+  publishDate: string;
+}
+
+export interface ArticleSubmission {
+  title: string;
+  content: string;
+  category: string;
+  authorEmail: string;
+}
+
+export const seoBridge = {
+  /**
+   * Fetch the latest published articles from the SEO backend.
+   */
+  async fetchLatestNews(): Promise<Article[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/news`);
+      if (!response.ok) throw new Error('Failed to fetch news');
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch latest news:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Submit an article to the Admin/SEO Pipeline for QA and approval.
+   */
+  async submitArticleForApproval(articleData: ArticleSubmission): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('Sending to backend QA Pipeline:', articleData);
+      const response = await fetch(`${API_BASE_URL}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(articleData)
+      });
+      if (!response.ok) throw new Error('Failed to submit article');
+      const data = await response.json();
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('Submission failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Register user for the newsletter.
+   */
+  async registerUser(email: string): Promise<{ success: boolean }> {
+    try {
+      console.log('Registering user email:', email);
+      const response = await fetch(`${API_BASE_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (!response.ok) throw new Error('Failed to register user');
+      return { success: true };
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Verify registration code
+   */
+  async verifyRegistration(email: string, code: string): Promise<{ success: boolean; message: string }> {
+    try {
+      console.log('Verifying registration:', email, code);
+      const response = await fetch(`${API_BASE_URL}/verify-registration`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, code })
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to verify registration');
+      }
+      const data = await response.json();
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('Verification failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Admin Login
+   */
+  async login(email: string, password: string): Promise<{ role: string; token: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      if (!response.ok) throw new Error('Invalid credentials');
+      return await response.json();
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch pending articles for Admin Dashboard
+   */
+  async getPendingArticles(token: string): Promise<Article[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/pending-articles`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to fetch pending articles');
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch pending articles:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Approve an article
+   */
+  async approveArticle(articleId: string, token: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/approve/${articleId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to approve article');
+      const data = await response.json();
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('Approval failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Reject an article
+   */
+  async rejectArticle(articleId: string, token: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/reject/${articleId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to reject article');
+      const data = await response.json();
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('Rejection failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete an article completely
+   */
+  async deleteArticle(articleId: string, token: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/article/${articleId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to delete article');
+      const data = await response.json();
+      return { success: true, message: data.message };
+    } catch (error) {
+      console.error('Delete failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Verify an existing admin token
+   */
+  async verifyToken(token: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/verify`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+};
