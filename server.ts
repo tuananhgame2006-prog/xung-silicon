@@ -55,29 +55,71 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // -------------------------------------------------------------
-// MAILER CONFIGURATION
+// MAILER CONFIGURATION (Dual-mode: Resend HTTP API + SMTP fallback)
+// Railway blocks SMTP ports, so we use Resend.com HTTP API in production.
 // -------------------------------------------------------------
 const SMTP_USER = process.env.SMTP_USER || 'tuananhgame2006@gmail.com';
 const SMTP_PASS = process.env.SMTP_PASS || 'cjlr ukgg nslo xfmr';
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+
+// SMTP transporter (for local dev only)
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 465,
   secure: true,
-  auth: {
-    user: SMTP_USER,
-    pass: SMTP_PASS,
-  },
+  auth: { user: SMTP_USER, pass: SMTP_PASS },
   connectionTimeout: 10000,
-  greetingTimeout: 10000,
   socketTimeout: 15000,
 });
 
-// Verify SMTP connection on startup
-transporter.verify().then(() => {
-  console.log('[SMTP] ✅ Gmail SMTP connection verified successfully!');
-}).catch(err => {
-  console.error('[SMTP] ❌ Gmail SMTP verification FAILED:', err.message);
-});
+async function sendOTPEmail(to: string, code: string) {
+  const subject = 'Mã xác nhận OTP - Nhịp đập Công Nghệ';
+  const text = `Mã xác nhận của bạn là: ${code}. Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này.`;
+
+  // Priority 1: Resend HTTP API (works on Railway)
+  if (RESEND_API_KEY) {
+    console.log(`[OTP/Resend] Sending code ${code} to ${to}...`);
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Nhịp đập Công Nghệ <onboarding@resend.dev>',
+        to: [to],
+        subject,
+        text,
+      }),
+    });
+    if (resp.ok) {
+      console.log(`[OTP/Resend] ✅ Email sent to ${to}`);
+    } else {
+      const err = await resp.text();
+      console.error(`[OTP/Resend] ❌ Failed:`, err);
+    }
+    return;
+  }
+
+  // Priority 2: SMTP (works locally, blocked on Railway)
+  console.log(`[OTP/SMTP] Sending code ${code} to ${to}...`);
+  const info = await transporter.sendMail({
+    from: `"Nhịp đập Công Nghệ" <${SMTP_USER}>`,
+    to,
+    subject,
+    text,
+  });
+  console.log(`[OTP/SMTP] ✅ Email sent to ${to}:`, info.response);
+}
+
+if (RESEND_API_KEY) {
+  console.log('[MAIL] ✅ Using Resend HTTP API for emails');
+} else {
+  console.log('[MAIL] ⚠️ RESEND_API_KEY not set, falling back to SMTP (may fail on Railway)');
+  transporter.verify()
+    .then(() => console.log('[SMTP] ✅ SMTP connection OK'))
+    .catch(err => console.error('[SMTP] ❌ SMTP FAILED:', err.message));
+}
 
 app.post('/api/request-otp', apiLimiter, async (req, res) => {
   const { email } = req.body;
@@ -90,16 +132,8 @@ app.post('/api/request-otp', apiLimiter, async (req, res) => {
     // Respond IMMEDIATELY so the user doesn't wait
     res.json({ success: true, message: 'OTP sent' });
     // Send email in background (fire-and-forget)
-    console.log(`[OTP] Sending code ${code} to ${cleanEmail}...`);
-    transporter.sendMail({
-      from: `"Nhịp đập Công Nghệ" <${SMTP_USER}>`,
-      to: cleanEmail,
-      subject: "Mã xác nhận OTP - Nhịp đập Công Nghệ",
-      text: `Mã xác nhận của bạn là: ${code}. Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này.`,
-    }).then(info => {
-      console.log(`[OTP] ✅ Email sent to ${cleanEmail}:`, info.response);
-    }).catch(err => {
-      console.error(`[OTP] ❌ Email FAILED to ${cleanEmail}:`, err.message);
+    sendOTPEmail(cleanEmail, code).catch(err => {
+      console.error(`[OTP] ❌ Email send error:`, err.message || err);
     });
   } catch (err) {
     res.status(500).json({ error: 'Không thể tạo OTP.' });
