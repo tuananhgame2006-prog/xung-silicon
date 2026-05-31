@@ -74,13 +74,10 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 15000,
 });
 
-async function sendOTPEmail(to: string, code: string) {
-  const subject = 'Mã xác nhận OTP - Nhịp đập Công Nghệ';
-  const text = `Mã xác nhận của bạn là: ${code}. Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này.`;
-
+async function sendSystemEmail(to: string, subject: string, text: string) {
   // Priority 1: Google Apps Script (100% Free, bypasses SMTP blocks, uses your Gmail)
   if (GOOGLE_SCRIPT_URL) {
-    console.log(`[OTP/GAS] Sending code ${code} to ${to}...`);
+    console.log(`[MAIL/GAS] Sending to ${to}...`);
     try {
       const resp = await fetch(GOOGLE_SCRIPT_URL, {
         method: 'POST',
@@ -88,17 +85,17 @@ async function sendOTPEmail(to: string, code: string) {
         body: JSON.stringify({ to, subject, body: text }),
       });
       if (resp.ok) {
-        console.log(`[OTP/GAS] ✅ Email sent successfully via Google Script to ${to}`);
+        console.log(`[MAIL/GAS] ✅ Email sent successfully via Google Script to ${to}`);
         return;
       }
     } catch (e: any) {
-      console.error(`[OTP/GAS] ❌ Failed to send via Google Script:`, e.message);
+      console.error(`[MAIL/GAS] ❌ Failed to send via Google Script:`, e.message);
     }
   }
 
   // Priority 2: Resend HTTP API (works on Railway, requires domain for non-owner emails)
   if (RESEND_API_KEY) {
-    console.log(`[OTP/Resend] Sending code ${code} to ${to}...`);
+    console.log(`[MAIL/Resend] Sending to ${to}...`);
     const resp = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -113,23 +110,23 @@ async function sendOTPEmail(to: string, code: string) {
       }),
     });
     if (resp.ok) {
-      console.log(`[OTP/Resend] ✅ Email sent to ${to}`);
+      console.log(`[MAIL/Resend] ✅ Email sent to ${to}`);
     } else {
       const err = await resp.text();
-      console.error(`[OTP/Resend] ❌ Failed:`, err);
+      console.error(`[MAIL/Resend] ❌ Failed:`, err);
     }
     return;
   }
 
   // Priority 3: SMTP (works locally, blocked on Railway)
-  console.log(`[OTP/SMTP] Sending code ${code} to ${to}...`);
+  console.log(`[MAIL/SMTP] Sending to ${to}...`);
   const info = await transporter.sendMail({
     from: `"Nhịp đập Công Nghệ" <${SMTP_USER}>`,
     to,
     subject,
     text,
   });
-  console.log(`[OTP/SMTP] ✅ Email sent to ${to}:`, info.response);
+  console.log(`[MAIL/SMTP] ✅ Email sent to ${to}:`, info.response);
 }
 
 if (GOOGLE_SCRIPT_URL) {
@@ -154,7 +151,9 @@ app.post('/api/request-otp', apiLimiter, async (req, res) => {
     // Respond IMMEDIATELY so the user doesn't wait
     res.json({ success: true, message: 'OTP sent' });
     // Send email in background (fire-and-forget)
-    sendOTPEmail(cleanEmail, code).catch(err => {
+    const subject = 'Mã xác nhận OTP - Nhịp đập Công Nghệ';
+    const text = `Mã xác nhận của bạn là: ${code}. Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này.`;
+    sendSystemEmail(cleanEmail, subject, text).catch(err => {
       console.error(`[OTP] ❌ Email send error:`, err.message || err);
     });
   } catch (err) {
@@ -230,7 +229,24 @@ app.post('/api/admin/approve/:id', verifyToken, async (req, res) => {
     const id = req.params.id;
     await run('UPDATE pending_articles SET status = "approved" WHERE id = ?', [id]);
     
-    // Email logic has been removed to a separate SEO project
+    // Fetch the approved article details
+    const articles = await query('SELECT * FROM pending_articles WHERE id = ?', [id]);
+    if (articles.length > 0) {
+      const article = articles[0];
+      // Fetch all subscribers
+      const subscribers = await query('SELECT email FROM subscribers');
+      if (subscribers.length > 0) {
+        console.log(`[NEWSLETTER] Broadcasting to ${subscribers.length} subscribers...`);
+        const subject = `[Bài viết mới] ${article.title}`;
+        const articleUrl = `${process.env.APP_URL || 'https://nhịpdạpcongnghe.com'}/article/${article.id}`;
+        const text = `Xin chào,\n\nNhịp đập Công Nghệ vừa xuất bản một bài viết mới mà bạn có thể quan tâm:\n\n"${article.title}"\n\nXem chi tiết tại: ${articleUrl}\n\nCảm ơn bạn đã theo dõi!`;
+        
+        // Fire and forget broadcasts
+        subscribers.forEach((sub: any) => {
+          sendSystemEmail(sub.email, subject, text).catch(err => console.error(`Failed to send newsletter to ${sub.email}:`, err));
+        });
+      }
+    }
 
     res.json({ message: 'Article approved and notifications dispatched.' });
   } catch (err) {
