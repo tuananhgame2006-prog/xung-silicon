@@ -237,6 +237,7 @@ app.post('/api/register', apiLimiter, async (req, res) => {
     return res.status(400).json({ error: 'Email không hợp lệ.' });
   }
   const cleanEmail = xss(email);
+  try {
     if (!code) {
       return res.status(400).json({ error: 'Thiếu mã xác nhận.' });
     }
