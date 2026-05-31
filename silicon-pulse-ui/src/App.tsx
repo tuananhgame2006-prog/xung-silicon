@@ -158,8 +158,14 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSub
     setErrorMessage('');
     try {
       await seoBridge.registerUser(email);
-      setStatus('idle');
-      setStep('code');
+      setStatus('success');
+      setTimeout(() => {
+        setShowSubscribeModal(false);
+        setStep('email');
+        setEmail('');
+        setCode('');
+        setStatus('idle');
+      }, 2000);
     } catch {
       setStatus('error');
       setErrorMessage('Không thể gửi yêu cầu đăng ký.');
@@ -475,7 +481,7 @@ const ContentSections = () => {
 const Footer = () => (
   <footer className="py-12 text-center text-sm font-medium text-slate-400 bg-slate-50 border-t border-slate-200 relative">
     <p>&copy; 2026 NHỊP ĐẬP CÔNG NGHỆ. Nền tảng tri thức Bán dẫn & Trí tuệ Nhân tạo. All rights reserved.</p>
-    <Link to="/admin" className="absolute bottom-4 right-4 w-6 h-6 opacity-0" aria-label="Admin Access"></Link>
+    <Link to="/admin" className="absolute bottom-4 right-4 text-xs font-semibold hover:text-cyan-500 transition-colors" aria-label="Admin Access">Đăng nhập Admin</Link>
   </footer>
 );
 

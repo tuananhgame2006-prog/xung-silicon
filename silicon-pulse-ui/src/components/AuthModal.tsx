@@ -27,7 +27,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLoginSu
     // Simulate network delay for Google OAuth
     setTimeout(() => {
       setLoading(false);
-      onLoginSuccess({ name: 'Google User', email: 'user@gmail.com' });
+      onLoginSuccess({ name: 'Người dùng Web', email: 'user@gmail.com' });
       onClose();
     }, 1500);
   };
