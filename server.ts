@@ -43,6 +43,21 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// -------------------------------------------------------------
+// [TRAFFIC TRACKER] Lưu vết người truy cập
+// Tính năng này giúp bạn biết ai đang vào web (xem trong Railway Logs)
+// -------------------------------------------------------------
+app.use((req, res, next) => {
+  // Chỉ log các request chính, bỏ qua ảnh, file css/js để đỡ rác log
+  if (!req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$/)) {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown IP';
+    const userAgent = req.headers['user-agent'] || 'Unknown Browser';
+    const time = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+    console.log(`[TRAFFIC] 🌍 Khách truy cập lúc ${time} | IP: ${ip} | Path: ${req.method} ${req.path} | Trình duyệt: ${userAgent}`);
+  }
+  next();
+});
+
 const PORT = process.env.PORT || 3000;
 
 const JWT_SECRET = process.env.JWT_SECRET && process.env.JWT_SECRET.trim() !== '' 
