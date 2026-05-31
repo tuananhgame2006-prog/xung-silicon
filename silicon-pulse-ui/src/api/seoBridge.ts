@@ -255,6 +255,24 @@ export const seoBridge = {
     }
   },
 
+  async createCommunityComment(data: { postId: string, author: string, content: string }): Promise<{success: boolean, id: string}> {
+    const response = await fetch(`${API_BASE_URL}/community/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Failed to create comment');
+    return await response.json();
+  },
+
+  async deleteCommunityComment(id: string, token: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/community/comment/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!response.ok) throw new Error('Failed to delete comment');
+  },
+
   /**
    * Verify an existing admin token
    */
