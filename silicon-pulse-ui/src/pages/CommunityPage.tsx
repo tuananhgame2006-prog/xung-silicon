@@ -70,22 +70,28 @@ export const CommunityPage = () => {
     });
   };
 
-  const handleAdminDeleteComment = (postId: number, commentId: number, isReply: boolean = false, parentId?: number) => {
-    confirmAction('Xóa bình luận này?', () => {
-      setPosts(prev => prev.map(p => {
-        if (p.id !== postId) return p;
-        let updatedComments = [...p.comments];
-        if (isReply && parentId) {
-          updatedComments = updatedComments.map(c => {
-            if (c.id !== parentId) return c;
-            return { ...c, replies: c.replies.filter(r => r.id !== commentId) };
-          });
-        } else {
-          updatedComments = updatedComments.filter(c => c.id !== commentId);
-        }
-        return { ...p, comments: updatedComments };
-      }));
-      showToast('Đã xóa bình luận (Dữ liệu ảo).');
+  const handleAdminDeleteComment = async (postId: number | string, commentId: number | string, isReply: boolean = false, parentId?: number) => {
+    if (!token) return;
+    confirmAction('Xóa bình luận này vĩnh viễn?', async () => {
+      try {
+        await seoBridge.deleteCommunityComment(commentId.toString(), token);
+        setPosts(prev => prev.map(p => {
+          if (p.id !== postId) return p;
+          let updatedComments = [...p.comments];
+          if (isReply && parentId) {
+            updatedComments = updatedComments.map(c => {
+              if (c.id !== parentId) return c;
+              return { ...c, replies: c.replies.filter(r => r.id !== commentId) };
+            });
+          } else {
+            updatedComments = updatedComments.filter(c => c.id !== commentId);
+          }
+          return { ...p, comments: updatedComments };
+        }));
+        showToast('Đã xóa bình luận.');
+      } catch {
+        showToast('Xóa thất bại.');
+      }
     });
   };
 
@@ -206,44 +212,62 @@ export const CommunityPage = () => {
     }));
   };
 
-  const handleSubmitComment = (postId: number) => {
+  const handleSubmitComment = async (postId: number | string) => {
     if (!currentUser) {
       setIsAuthOpen(true);
       return;
     }
     if (!commentInput.trim()) return;
 
-    const newComment: CommentType = {
-      id: Date.now(),
-      author: currentUser.name,
-      time: 'Vừa xong',
-      content: commentInput,
-      likes: 0,
-      isLiked: false,
-      replies: []
-    };
-
-    setPosts(posts.map(p => {
-      if (p.id !== postId) return p;
+    try {
+      const isTopLevel = !(replyingTo && replyingTo.postId === postId);
       
-      if (replyingTo && replyingTo.postId === postId) {
-        // Add as reply
-        const newComments = p.comments.map(c => {
-          if (c.id === replyingTo.commentId) {
-            return { ...c, replies: [...c.replies, newComment] };
-          }
-          return c;
+      // Currently backend only supports top level comments in DB easily
+      // We will save it to backend. (Replies are treated as top-level in DB for now to simplify, or not saved if complex)
+      let resId = Date.now().toString();
+      if (isTopLevel) {
+        const res = await seoBridge.createCommunityComment({
+          postId: postId.toString(),
+          author: currentUser.name,
+          content: commentInput
         });
-        return { ...p, comments: newComments };
-      } else {
-        // Add as top-level comment
-        return { ...p, comments: [...p.comments, newComment] };
+        resId = res.id;
       }
-    }));
-    
-    setCommentInput('');
-    setReplyingTo(null);
-    showToast('Đã gửi bình luận!');
+
+      const newComment: CommentType = {
+        id: resId as any,
+        author: currentUser.name,
+        time: 'Vừa xong',
+        content: commentInput,
+        likes: 0,
+        isLiked: false,
+        replies: []
+      };
+
+      setPosts(posts.map(p => {
+        if (p.id !== postId) return p;
+        
+        if (!isTopLevel) {
+          // Add as reply
+          const newComments = p.comments.map(c => {
+            if (c.id === replyingTo.commentId) {
+              return { ...c, replies: [...c.replies, newComment] };
+            }
+            return c;
+          });
+          return { ...p, comments: newComments };
+        } else {
+          // Add as top-level comment
+          return { ...p, comments: [...p.comments, newComment] };
+        }
+      }));
+      
+      setCommentInput('');
+      setReplyingTo(null);
+      showToast('Đã gửi bình luận!');
+    } catch {
+      showToast('Có lỗi xảy ra khi gửi bình luận.');
+    }
   };
 
   const handleShare = () => {

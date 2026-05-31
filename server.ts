@@ -215,7 +215,24 @@ app.post('/api/community/post', async (req, res) => {
 app.get('/api/community/posts', async (req, res) => {
   try {
     const posts = await query('SELECT * FROM community_posts ORDER BY id DESC');
-    res.json(posts);
+    const comments = await query('SELECT * FROM community_comments');
+    
+    const formattedPosts = posts.map(post => {
+      const postComments = comments
+        .filter(c => c.postId === post.id)
+        .map(c => ({
+          id: c.id,
+          author: c.author,
+          time: c.time,
+          content: c.content,
+          likes: 0,
+          isLiked: false,
+          replies: []
+        }));
+      return { ...post, comments: postComments };
+    });
+    
+    res.json(formattedPosts);
   } catch (err) {
     res.status(500).json({ error: 'Database error' });
   }
@@ -226,6 +243,29 @@ app.delete('/api/community/post/:id', verifyToken, async (req, res) => {
     await run('DELETE FROM community_comments WHERE postId = ?', [req.params.id]);
     await run('DELETE FROM community_posts WHERE id = ?', [req.params.id]);
     res.json({ success: true, message: 'Đã xóa bài đăng.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.post('/api/community/comment', async (req, res) => {
+  const { postId, author, content } = req.body;
+  const id = `comment-${Date.now()}`;
+  try {
+    await run(
+      'INSERT INTO community_comments (id, postId, author, time, content) VALUES (?, ?, ?, ?, ?)',
+      [id, postId, xss(author), 'Vừa xong', xss(content)]
+    );
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.delete('/api/community/comment/:id', verifyToken, async (req, res) => {
+  try {
+    await run('DELETE FROM community_comments WHERE id = ?', [req.params.id]);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Database error' });
   }
