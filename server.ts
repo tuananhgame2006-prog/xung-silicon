@@ -365,15 +365,12 @@ app.post('/api/register', apiLimiter, async (req, res) => {
     if (otps.length === 0 || otps[0].code !== code || otps[0].expiresAt < Date.now()) {
       return res.status(400).json({ error: 'Mã xác nhận không đúng hoặc đã hết hạn.' });
     }
-    await run('INSERT INTO subscribers (email, subscribedAt) VALUES (?, ?)', [cleanEmail, new Date().toISOString()]);
+    // Use INSERT OR IGNORE so if they are already a subscriber, they can still verify their OTP for community access
+    await run('INSERT OR IGNORE INTO subscribers (email, subscribedAt) VALUES (?, ?)', [cleanEmail, new Date().toISOString()]);
     await run('DELETE FROM otps WHERE email = ?', [cleanEmail]);
     res.json({ success: true, message: 'Đăng ký nhận bản tin thành công!' });
   } catch (err: any) {
-    if (err.message && err.message.includes('UNIQUE')) {
-      res.status(400).json({ error: 'Email này đã được đăng ký từ trước.' });
-    } else {
-      res.status(500).json({ error: 'Lỗi cơ sở dữ liệu.' });
-    }
+    res.status(500).json({ error: 'Lỗi cơ sở dữ liệu.' });
   }
 });
 
