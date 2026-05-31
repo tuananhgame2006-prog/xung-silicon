@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Tuấn Anh (tuananhgame2006). Tác phẩm được bảo hộ bản quyền. Nghiêm cấm sao chép dưới mọi hình thức. */
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Lock, ShieldAlert, Loader2, AlertCircle } from 'lucide-react';

@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Tuấn Anh (tuananhgame2006). Tác phẩm được bảo hộ bản quyền. Nghiêm cấm sao chép dưới mọi hình thức. */
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
@@ -15,6 +16,23 @@ dotenv.config({ path: '.env.local' }); // Load .env.local for ADMIN_EMAIL, ADMIN
 
 const app = express();
 app.set('trust proxy', 1); // Railway runs behind a reverse proxy
+
+// -------------------------------------------------------------
+// [ANTI-PIRACY] RUNTIME LOCK (Cấp Quốc Phòng)
+// Ngăn chặn thầy giáo hoặc bất kỳ ai lấy code đem chạy ở server khác.
+// Code sẽ tự hủy (crash) nếu không có chìa khóa bản quyền.
+// -------------------------------------------------------------
+const AUTHOR_KEY = process.env.AUTHORIZATION_LOCK;
+if (process.env.NODE_ENV === 'production' && AUTHOR_KEY !== 'TuanAnh-BaoMat-2026') {
+  console.error('\n======================================================');
+  console.error('☠️ LỖI BẢN QUYỀN (LICENSE VIOLATION DETECTED) ☠️');
+  console.error('Mã nguồn này thuộc bản quyền của Tuấn Anh (tuananhgame2006).');
+  console.error('Môi trường chạy không hợp lệ do thiếu khóa bảo mật (AUTHORIZATION_LOCK).');
+  console.error('Process will exit immediately.');
+  console.error('======================================================\n');
+  process.exit(1); // Force crash
+}
+
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
   crossOriginEmbedderPolicy: false

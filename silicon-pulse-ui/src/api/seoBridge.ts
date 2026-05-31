@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Tuấn Anh (tuananhgame2006). Tác phẩm được bảo hộ bản quyền. Nghiêm cấm sao chép dưới mọi hình thức. */
 // API Bridge Layer: Isolates the UI from the Python SEO Backend
 
 const API_BASE_URL = import.meta.env.PROD ? '/api' : 'http://localhost:3000/api';

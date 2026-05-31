@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Tuấn Anh (tuananhgame2006). Tác phẩm được bảo hộ bản quyền. Nghiêm cấm sao chép dưới mọi hình thức. */
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ThumbsUp, MessageCircle, Share2, MoreHorizontal, Send, Image as ImageIcon, Smile, Cpu, X, Bookmark, Flag, Bell, Heart, Lightbulb, Rocket } from 'lucide-react';

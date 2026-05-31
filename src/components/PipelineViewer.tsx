@@ -1,3 +1,4 @@
+/* Copyright (c) 2026 Tuấn Anh (tuananhgame2006). Tác phẩm được bảo hộ bản quyền. Nghiêm cấm sao chép dưới mọi hình thức. */
 import React from 'react';
 import { Keyword, Draft, PublishedPost } from '../types';
 import { ExternalLink } from 'lucide-react';
