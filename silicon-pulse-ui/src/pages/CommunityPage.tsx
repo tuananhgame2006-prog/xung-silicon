@@ -37,7 +37,14 @@ const MOCK_IMAGE = "https://images.unsplash.com/photo-1518770660439-4636190af475
 const EMOJIS = ['😀', '😂', '🔥', '🚀', '🧠', '💡', '❤️', '👍', '🤔', '👀'];
 
 export const CommunityPage = () => {
-  const [currentUser, setCurrentUser] = useState<UserData>(null);
+  const [currentUser, setCurrentUser] = useState<UserData>(() => {
+    try {
+      const saved = localStorage.getItem('communityUser');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'chung' | 'ban-dan' | 'ai'>('chung');
   
@@ -310,7 +317,10 @@ export const CommunityPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-100 pb-20 font-sans">
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onLoginSuccess={(user) => setCurrentUser(user)} />
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onLoginSuccess={(user) => {
+        setCurrentUser(user);
+        if (user) localStorage.setItem('communityUser', JSON.stringify(user));
+      }} />
 
       {/* Header Nav */}
       <nav className="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200 shadow-sm">
@@ -324,11 +334,22 @@ export const CommunityPage = () => {
           </div>
           <div className="flex items-center gap-4">
             {currentUser ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-cyan-100 flex items-center justify-center text-cyan-700 font-bold text-sm">
-                  {currentUser.name.charAt(0)}
+                  {currentUser.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-sm font-medium text-slate-700 hidden sm:inline">{currentUser.name}</span>
+                <div className="hidden sm:block">
+                  <div className="text-sm font-medium text-slate-700">{currentUser.name}</div>
+                  <button 
+                    onClick={() => {
+                      setCurrentUser(null);
+                      localStorage.removeItem('communityUser');
+                    }}
+                    className="text-xs text-rose-500 hover:text-rose-700 transition-colors"
+                  >
+                    Đăng xuất
+                  </button>
+                </div>
               </div>
             ) : (
               <button onClick={() => setIsAuthOpen(true)} className="text-sm font-bold text-cyan-600 hover:text-cyan-700">Đăng nhập</button>
