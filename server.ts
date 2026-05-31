@@ -233,7 +233,9 @@ app.get('/api/images/:filename', (req, res) => {
 // -------------------------------------------------------------
 
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  const isDev = process.env.NODE_ENV !== 'production' && !process.argv.some(arg => arg.includes('server.cjs'));
+  
+  if (isDev) {
     // During development, we can run Vite directly (npm run dev on 5175).
     // If we run this script directly, we use middleware mode.
     try {
