@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Clock, Filter } from 'lucide-react';
 import { mockArticles } from '../data/mockArticles';
+import { seoBridge } from '../api/seoBridge';
 
 const parseDate = (dateStr: string) => {
   if (!dateStr) return 0;
@@ -23,6 +24,11 @@ const parseDate = (dateStr: string) => {
 export const CategoryPage = () => {
   const { id } = useParams<{ id: string }>();
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [hiddenArticles, setHiddenArticles] = useState<string[]>([]);
+
+  useEffect(() => {
+    seoBridge.getHiddenArticles().then(setHiddenArticles).catch(console.error);
+  }, []);
   
   const categoryTitles: Record<string, string> = {
     'foundational': 'Tài liệu Nền tảng',
@@ -31,7 +37,7 @@ export const CategoryPage = () => {
   };
 
   const title = categoryTitles[id || ''] || 'Danh mục';
-  let articles = mockArticles.filter(a => a.category === id);
+  let articles = mockArticles.filter(a => a.category === id && !hiddenArticles.includes(a.id));
 
   articles = [...articles].sort((a, b) => parseDate(b.date) - parseDate(a.date));
 

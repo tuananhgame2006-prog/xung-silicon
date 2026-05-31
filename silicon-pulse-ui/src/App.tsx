@@ -312,17 +312,19 @@ const ContentSections = () => {
   const { showToast } = useToast();
   const { confirmAction } = useConfirm();
   const [pendingArticles, setPendingArticles] = useState<Article[]>([]);
+  const [hiddenArticles, setHiddenArticles] = useState<string[]>([]);
   const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     if (isAdmin && token) {
       seoBridge.getPendingArticles(token).then(setPendingArticles).catch(console.error);
     }
+    seoBridge.getHiddenArticles().then(setHiddenArticles).catch(console.error);
   }, [isAdmin, token, refresh]);
 
-  const foundationalArticles = sortArticles(mockArticles.filter(a => a.category === 'foundational'));
-  const semiNewsArticles = sortArticles(mockArticles.filter(a => a.category === 'semi-news'));
-  const aiNewsArticles = sortArticles(mockArticles.filter(a => a.category === 'ai-news'));
+  const foundationalArticles = sortArticles(mockArticles.filter(a => a.category === 'foundational' && !hiddenArticles.includes(a.id)));
+  const semiNewsArticles = sortArticles(mockArticles.filter(a => a.category === 'semi-news' && !hiddenArticles.includes(a.id)));
+  const aiNewsArticles = sortArticles(mockArticles.filter(a => a.category === 'ai-news' && !hiddenArticles.includes(a.id)));
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();

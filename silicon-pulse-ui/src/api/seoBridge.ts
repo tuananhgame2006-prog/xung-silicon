@@ -285,5 +285,15 @@ export const seoBridge = {
     } catch {
       return false;
     }
+  },
+
+  async getHiddenArticles(): Promise<string[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/hidden-articles`);
+      if (response.ok) return await response.json();
+      return [];
+    } catch {
+      return [];
+    }
   }
 };

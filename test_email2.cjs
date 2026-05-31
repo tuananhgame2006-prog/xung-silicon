@@ -1,0 +1,1 @@
+const nodemailer = require('nodemailer'); const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: 'tuananhgame2006@gmail.com', pass: 'cjlr ukgg nslo xfmr' } }); transporter.sendMail({ from: 'tuananhgame2006@gmail.com', to: 'tuananhgame2006@gmail.com', subject: 'Test', text: 'Test' }).then(console.log).catch(console.error);  
