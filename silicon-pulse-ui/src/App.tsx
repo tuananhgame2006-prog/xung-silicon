@@ -94,7 +94,7 @@ const Navbar = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolean)
       <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
         <a href="/" onClick={handleHomeClick} className="flex items-center gap-2">
           <Cpu className="text-cyan-500 w-8 h-8" />
-          <span className="font-serif text-2xl tracking-wide text-slate-800">XUNG SILICON</span>
+          <span className="font-serif text-2xl tracking-wide text-slate-800">NHỊP ĐẬP CÔNG NGHỆ</span>
         </a>
         
         <div className="hidden md:flex items-center gap-8 text-sm font-medium">
@@ -474,7 +474,7 @@ const ContentSections = () => {
 
 const Footer = () => (
   <footer className="py-12 text-center text-sm font-medium text-slate-400 bg-slate-50 border-t border-slate-200 relative">
-    <p>&copy; 2026 XUNG SILICON. Nền tảng tri thức Bán dẫn & Trí tuệ Nhân tạo. All rights reserved.</p>
+    <p>&copy; 2026 NHỊP ĐẬP CÔNG NGHỆ. Nền tảng tri thức Bán dẫn & Trí tuệ Nhân tạo. All rights reserved.</p>
     <Link to="/admin" className="absolute bottom-4 right-4 w-6 h-6 opacity-0" aria-label="Admin Access"></Link>
   </footer>
 );

@@ -342,7 +342,7 @@ export const ArticlePage = () => {
             <Link to="/community" className="block mt-12 p-6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-center relative overflow-hidden group shadow-xl hover:shadow-cyan-500/20 transition-all">
               <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/20 rounded-full blur-3xl group-hover:bg-cyan-500/40 transition-colors duration-500"></div>
               <Cpu className="text-cyan-400 w-10 h-10 mx-auto mb-4 relative z-10 group-hover:scale-110 transition-transform" />
-              <h4 className="text-white font-serif text-xl mb-2 relative z-10">Cộng đồng Xung Silicon</h4>
+              <h4 className="text-white font-serif text-xl mb-2 relative z-10">Cộng đồng Nhịp đập Công Nghệ</h4>
               <p className="text-slate-400 text-xs mb-4 relative z-10">Đăng ký trở thành thành viên để cùng thảo luận chuyên sâu.</p>
               <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 group-hover:text-cyan-300 relative z-10">Đăng ký thành viên &rarr;</span>
             </Link>

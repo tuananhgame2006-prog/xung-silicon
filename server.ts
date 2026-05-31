@@ -8,13 +8,15 @@ import jwt from 'jsonwebtoken';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import xss from 'xss';
-import nodemailer from 'nodemailer';
 import { query, run } from './server/web_db.js';
 
 dotenv.config({ path: '.env.local' }); // Load .env.local for ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET
 
 const app = express();
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
+  crossOriginEmbedderPolicy: false
+}));
 app.use(cors({
   origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
   credentials: true
@@ -47,15 +49,8 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // -------------------------------------------------------------
-// MAILER CONFIGURATION
+// MAILER CONFIGURATION (REMOVED)
 // -------------------------------------------------------------
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.SMTP_USER || 'tuananhgame2006@gmail.com',
-    pass: process.env.SMTP_PASS
-  }
-});
 
 // -------------------------------------------------------------
 // MIDDLEWARE: JWT AUTHENTICATION
@@ -126,43 +121,7 @@ app.post('/api/admin/approve/:id', verifyToken, async (req, res) => {
     const id = req.params.id;
     await run('UPDATE pending_articles SET status = "approved" WHERE id = ?', [id]);
     
-    // Fetch article details for the email
-    const articles = await query('SELECT title, category FROM pending_articles WHERE id = ?', [id]);
-    if (articles.length > 0) {
-      const article = articles[0];
-      const subscribers = await query('SELECT email FROM subscribers');
-      
-      if (subscribers.length > 0) {
-        const mailList = subscribers.map(sub => sub.email).join(',');
-        
-        const mailOptions = {
-          from: `"Xung Silicon" <${process.env.SMTP_USER || 'tuananhgame2006@gmail.com'}>`,
-          bcc: mailList,
-          subject: `📰 Bài viết mới: ${article.title}`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 10px;">
-              <h2 style="color: #0ea5e9;">Cộng đồng Xung Silicon</h2>
-              <p>Chào bạn,</p>
-              <p>Một bài báo công nghệ chuyên sâu mới vừa được Ban biên tập phê duyệt trên nền tảng của chúng tôi!</p>
-              <div style="background: #f8fafc; padding: 15px; border-left: 4px solid #0ea5e9; margin: 20px 0;">
-                <h3 style="margin: 0 0 10px 0; color: #1e293b;">${article.title}</h3>
-                <p style="margin: 0; color: #64748b; font-size: 14px;">Chuyên mục: ${article.category === 'ai-news' ? 'Tin tức AI' : article.category === 'semi-news' ? 'Bán dẫn' : 'Tài liệu Nền tảng'}</p>
-              </div>
-              <a href="${process.env.APP_URL || 'http://localhost:5173'}/" style="display: inline-block; background: #0ea5e9; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Đọc ngay</a>
-              <p style="margin-top: 30px; font-size: 12px; color: #94a3b8;">Cảm ơn bạn đã đồng hành cùng Mạng lưới Công nghệ Cốt lõi Quốc gia.</p>
-            </div>
-          `
-        };
-
-        transporter.sendMail(mailOptions, (error, info) => {
-          if (error) {
-            console.error('Lỗi khi gửi email thông báo (Có thể do thiếu SMTP_PASS):', error);
-          } else {
-            console.log('Đã gửi email thông báo thành công tới các subscribers:', info.response);
-          }
-        });
-      }
-    }
+    // Email logic has been removed to a separate SEO project
 
     res.json({ message: 'Article approved and notifications dispatched.' });
   } catch (err) {
@@ -276,7 +235,8 @@ async function startServer() {
       const vite = await createViteServer({
         server: { middlewareMode: true },
         appType: 'spa',
-        root: path.join(process.cwd(), 'silicon-pulse-ui')
+        root: path.join(process.cwd(), 'silicon-pulse-ui'),
+        configFile: path.join(process.cwd(), 'silicon-pulse-ui', 'vite.config.ts')
       });
       app.use(vite.middlewares);
     } catch (e) {
@@ -291,8 +251,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[XUNG SILICON WEB] Server booted on port ${PORT}`);
+  app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`[NHỊP ĐẬP CÔNG NGHỆ WEB] Server booted on port ${PORT}`);
   });
 }
 

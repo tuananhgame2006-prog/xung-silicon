@@ -48,7 +48,7 @@ export const CategoryPage = () => {
             <ArrowLeft size={16} /> Về Trang chủ
           </Link>
           <div className="flex items-center gap-2">
-            <span className="font-serif text-lg tracking-wide text-slate-800">XUNG SILICON</span>
+            <span className="font-serif text-lg tracking-wide text-slate-800">NHỊP ĐẬP CÔNG NGHỆ</span>
           </div>
         </div>
       </nav>
