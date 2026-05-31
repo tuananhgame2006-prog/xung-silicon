@@ -146,23 +146,27 @@ const Navbar = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolean)
 };
 
 const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSubscribeModal: boolean, setShowSubscribeModal: (s: boolean) => void }) => {
-  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [sendingOtp, setSendingOtp] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setStatus('loading');
+  const handleSendOTP = async () => {
+    if (!email.trim()) {
+      setErrorMessage('Vui lòng điền email trước khi nhận mã.');
+      return;
+    }
+    setSendingOtp(true);
     setErrorMessage('');
     try {
       await seoBridge.requestOTP(email);
-      setStep('code');
-      setStatus('idle');
+      setOtpSent(true);
     } catch {
-      setStatus('error');
       setErrorMessage('Không thể gửi OTP. Vui lòng kiểm tra lại email.');
+    } finally {
+      setSendingOtp(false);
     }
   };
 
@@ -175,9 +179,9 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSub
       setStatus('success');
       setTimeout(() => {
         setShowSubscribeModal(false);
-        setStep('email');
         setEmail('');
         setCode('');
+        setOtpSent(false);
         setStatus('idle');
       }, 2000);
     } catch (err: any) {
@@ -202,9 +206,9 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSub
             <button onClick={() => {
               setShowSubscribeModal(false);
               setTimeout(() => {
-                setStep('email');
                 setEmail('');
                 setCode('');
+                setOtpSent(false);
                 setStatus('idle');
                 setErrorMessage('');
               }, 300);
@@ -220,40 +224,46 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSub
               </div>
             ) : (
               <>
-                <h3 className="font-serif text-3xl mb-2 text-cyan-600">
-                  {step === 'email' ? 'Nhận bản tin chuyên sâu' : 'Xác nhận Email'}
-                </h3>
+                <h3 className="font-serif text-3xl mb-2 text-cyan-600">Nhận bản tin chuyên sâu</h3>
                 <p className="text-sm text-slate-500 mb-6 font-sans">
-                  {step === 'email' 
-                    ? 'Cập nhật các phân tích độc quyền về công nghệ lõi bán dẫn và AI trực tiếp vào hộp thư của bạn.' 
-                    : `Chúng tôi đã gửi mã xác nhận 4 chữ số đến email ${email}. Vui lòng kiểm tra hộp thư (và thư rác).`}
+                  Vui lòng điền email và xác nhận mã để nhận các phân tích độc quyền về công nghệ lõi bán dẫn.
                 </p>
                 {errorMessage && (
                   <div className="mb-4 p-3 bg-rose-50 text-rose-600 text-sm rounded-lg border border-rose-100">
                     {errorMessage}
                   </div>
                 )}
-                {step === 'email' ? (
-                  <form onSubmit={handleEmailSubmit}>
-                    <input 
-                      type="email" 
-                      placeholder="Địa chỉ Email của bạn" 
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="w-full glass-input px-4 py-3 rounded-lg mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                      disabled={status === 'loading'}
-                    />
-                    <button 
-                      type="submit" 
-                      disabled={status === 'loading'}
-                      className="w-full bg-cyan-500 text-white font-bold py-3 rounded-lg hover:bg-cyan-400 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 shadow-md shadow-cyan-500/20"
-                    >
-                      {status === 'loading' ? <Loader2 className="animate-spin" size={20} /> : 'Tiếp tục'}
-                    </button>
-                  </form>
-                ) : (
-                  <form onSubmit={handleCodeSubmit}>
+                {otpSent && !errorMessage && (
+                  <div className="mb-4 p-3 bg-emerald-50 text-emerald-700 text-sm rounded-lg border border-emerald-100">
+                    Đã gửi mã xác nhận! Vui lòng kiểm tra email của bạn.
+                  </div>
+                )}
+                <form onSubmit={handleCodeSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Email <span className="text-rose-500">*</span></label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="email" 
+                        placeholder="Địa chỉ Email của bạn" 
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full glass-input px-4 py-3 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        disabled={status === 'loading'}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={handleSendOTP}
+                        disabled={sendingOtp || !email.trim()}
+                        className="whitespace-nowrap px-4 py-3 bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-lg hover:bg-slate-200 disabled:opacity-50 transition-colors"
+                      >
+                        {sendingOtp ? 'Đang gửi...' : (otpSent ? 'Gửi lại mã' : 'Nhận mã OTP')}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase tracking-wide">Mã xác nhận (4 số) <span className="text-rose-500">*</span></label>
                     <input 
                       type="text" 
                       placeholder="Nhập mã 4 chữ số" 
@@ -262,18 +272,19 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSub
                       pattern="\d{4}"
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
-                      className="w-full glass-input px-4 py-3 rounded-lg mb-4 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      className="w-full glass-input px-4 py-3 rounded-lg text-center text-xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500"
                       disabled={status === 'loading'}
                     />
-                    <button 
-                      type="submit" 
-                      disabled={status === 'loading' || code.length !== 4}
-                      className="w-full bg-cyan-500 text-white font-bold py-3 rounded-lg hover:bg-cyan-400 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 shadow-md shadow-cyan-500/20"
-                    >
-                      {status === 'loading' ? <Loader2 className="animate-spin" size={20} /> : 'Xác nhận & Đăng ký'}
-                    </button>
-                  </form>
-                )}
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={status === 'loading' || code.length !== 4 || !otpSent}
+                    className="w-full mt-4 bg-cyan-500 text-white font-bold py-3 rounded-lg hover:bg-cyan-400 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 shadow-md shadow-cyan-500/20"
+                  >
+                    {status === 'loading' ? <Loader2 className="animate-spin" size={20} /> : 'Xác nhận & Đăng ký'}
+                  </button>
+                </form>
               </>
             )}
           </motion.div>
