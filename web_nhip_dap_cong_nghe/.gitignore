@@ -1,0 +1,14 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# BẢO MẬT CƠ SỞ DỮ LIỆU
+web_data.db
+
+# FILES DỮ LIỆU ĐỘNG
+E_drive/
