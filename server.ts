@@ -62,6 +62,7 @@ app.use('/api/', apiLimiter);
 const SMTP_USER = process.env.SMTP_USER || 'tuananhgame2006@gmail.com';
 const SMTP_PASS = process.env.SMTP_PASS || 'cjlr ukgg nslo xfmr';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const GOOGLE_SCRIPT_URL = process.env.GOOGLE_SCRIPT_URL || '';
 
 // SMTP transporter (for local dev only)
 const transporter = nodemailer.createTransport({
@@ -77,7 +78,25 @@ async function sendOTPEmail(to: string, code: string) {
   const subject = 'Mã xác nhận OTP - Nhịp đập Công Nghệ';
   const text = `Mã xác nhận của bạn là: ${code}. Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này.`;
 
-  // Priority 1: Resend HTTP API (works on Railway)
+  // Priority 1: Google Apps Script (100% Free, bypasses SMTP blocks, uses your Gmail)
+  if (GOOGLE_SCRIPT_URL) {
+    console.log(`[OTP/GAS] Sending code ${code} to ${to}...`);
+    try {
+      const resp = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ to, subject, body: text }),
+      });
+      if (resp.ok) {
+        console.log(`[OTP/GAS] ✅ Email sent successfully via Google Script to ${to}`);
+        return;
+      }
+    } catch (e: any) {
+      console.error(`[OTP/GAS] ❌ Failed to send via Google Script:`, e.message);
+    }
+  }
+
+  // Priority 2: Resend HTTP API (works on Railway, requires domain for non-owner emails)
   if (RESEND_API_KEY) {
     console.log(`[OTP/Resend] Sending code ${code} to ${to}...`);
     const resp = await fetch('https://api.resend.com/emails', {
@@ -102,7 +121,7 @@ async function sendOTPEmail(to: string, code: string) {
     return;
   }
 
-  // Priority 2: SMTP (works locally, blocked on Railway)
+  // Priority 3: SMTP (works locally, blocked on Railway)
   console.log(`[OTP/SMTP] Sending code ${code} to ${to}...`);
   const info = await transporter.sendMail({
     from: `"Nhịp đập Công Nghệ" <${SMTP_USER}>`,
@@ -113,7 +132,9 @@ async function sendOTPEmail(to: string, code: string) {
   console.log(`[OTP/SMTP] ✅ Email sent to ${to}:`, info.response);
 }
 
-if (RESEND_API_KEY) {
+if (GOOGLE_SCRIPT_URL) {
+  console.log('[MAIL] ✅ Using Google Apps Script for emails (100% Free)');
+} else if (RESEND_API_KEY) {
   console.log('[MAIL] ✅ Using Resend HTTP API for emails');
 } else {
   console.log('[MAIL] ⚠️ RESEND_API_KEY not set, falling back to SMTP (may fail on Railway)');
