@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Mail, User } from 'lucide-react';
+import { seoBridge } from '../api/seoBridge';
 
 export type UserData = {
   name: string;

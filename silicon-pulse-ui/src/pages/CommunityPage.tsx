@@ -5,6 +5,7 @@ import { AuthModal, type UserData } from '../components/AuthModal';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../components/AuthContext';
 import { useConfirm } from '../components/ConfirmContext';
+import { seoBridge } from '../api/seoBridge';
 
 // --- Types ---
 export type CommentType = {
@@ -106,7 +107,7 @@ export const CommunityPage = () => {
       try {
         const data = await seoBridge.getCommunityPosts();
         // ensure format fits PostType, comments need to be [] if undefined
-        const formattedData = data.map(p => ({
+        const formattedData = data.map((p: any) => ({
           ...p,
           comments: p.comments || [],
           userReaction: null,
