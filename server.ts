@@ -77,18 +77,18 @@ app.post('/api/request-otp', apiLimiter, async (req, res) => {
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins
   try {
     await run('INSERT INTO otps (email, code, expiresAt) VALUES (?, ?, ?) ON CONFLICT(email) DO UPDATE SET code=excluded.code, expiresAt=excluded.expiresAt', [cleanEmail, code, expiresAt]);
+    // Respond IMMEDIATELY so the user doesn't wait
+    res.json({ success: true, message: 'OTP sent' });
+    // Send email in background (fire-and-forget)
     if (SMTP_PASS) {
       transporter.sendMail({
         from: `"Nhịp đập Công Nghệ" <${SMTP_USER}>`,
         to: cleanEmail,
         subject: "Mã xác nhận OTP - Nhịp đập Công Nghệ",
         text: `Mã xác nhận của bạn là: ${code}. Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này.`,
-      }).catch(err => console.error("Error sending background OTP email:", err));
-      
-      res.json({ success: true, message: 'OTP sent' });
+      }).catch(err => console.error('Background email send failed:', err));
     } else {
-      console.warn("SMTP_PASS is missing, but simulating success. OTP is:", code);
-      res.json({ success: true, message: 'OTP simulated' });
+      console.warn("SMTP_PASS is missing. OTP is:", code);
     }
   } catch (err) {
     res.status(500).json({ error: 'Không thể tạo OTP.' });
