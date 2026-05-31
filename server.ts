@@ -61,12 +61,22 @@ const SMTP_USER = process.env.SMTP_USER || 'tuananhgame2006@gmail.com';
 const SMTP_PASS = process.env.SMTP_PASS || 'cjlr ukgg nslo xfmr';
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
+  port: 465,
+  secure: true,
   auth: {
     user: SMTP_USER,
     pass: SMTP_PASS,
   },
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
+});
+
+// Verify SMTP connection on startup
+transporter.verify().then(() => {
+  console.log('[SMTP] ✅ Gmail SMTP connection verified successfully!');
+}).catch(err => {
+  console.error('[SMTP] ❌ Gmail SMTP verification FAILED:', err.message);
 });
 
 app.post('/api/request-otp', apiLimiter, async (req, res) => {
@@ -80,16 +90,17 @@ app.post('/api/request-otp', apiLimiter, async (req, res) => {
     // Respond IMMEDIATELY so the user doesn't wait
     res.json({ success: true, message: 'OTP sent' });
     // Send email in background (fire-and-forget)
-    if (SMTP_PASS) {
-      transporter.sendMail({
-        from: `"Nhịp đập Công Nghệ" <${SMTP_USER}>`,
-        to: cleanEmail,
-        subject: "Mã xác nhận OTP - Nhịp đập Công Nghệ",
-        text: `Mã xác nhận của bạn là: ${code}. Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này.`,
-      }).catch(err => console.error('Background email send failed:', err));
-    } else {
-      console.warn("SMTP_PASS is missing. OTP is:", code);
-    }
+    console.log(`[OTP] Sending code ${code} to ${cleanEmail}...`);
+    transporter.sendMail({
+      from: `"Nhịp đập Công Nghệ" <${SMTP_USER}>`,
+      to: cleanEmail,
+      subject: "Mã xác nhận OTP - Nhịp đập Công Nghệ",
+      text: `Mã xác nhận của bạn là: ${code}. Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này.`,
+    }).then(info => {
+      console.log(`[OTP] ✅ Email sent to ${cleanEmail}:`, info.response);
+    }).catch(err => {
+      console.error(`[OTP] ❌ Email FAILED to ${cleanEmail}:`, err.message);
+    });
   } catch (err) {
     res.status(500).json({ error: 'Không thể tạo OTP.' });
   }
