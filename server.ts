@@ -14,6 +14,7 @@ import { query, run } from './server/web_db.js';
 dotenv.config({ path: '.env.local' }); // Load .env.local for ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET
 
 const app = express();
+app.set('trust proxy', 1); // Railway runs behind a reverse proxy
 app.use(helmet({
   contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
   crossOriginEmbedderPolicy: false
