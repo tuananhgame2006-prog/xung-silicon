@@ -68,7 +68,7 @@ export const sortArticles = (articles: typeof mockArticles) => {
 };
 
 
-const Navbar = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolean) => void }) => {
+const Navbar = ({ setShowSubscribeModal, subscribedEmail }: { setShowSubscribeModal: (s: boolean) => void, subscribedEmail: string }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -103,12 +103,19 @@ const Navbar = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolean)
           <Link to="/#semi-news" className="text-slate-600 hover:text-cyan-500 transition-colors">Tin tức Bán dẫn</Link>
           <Link to="/#ai-news" className="text-slate-600 hover:text-cyan-500 transition-colors">Tin tức AI</Link>
           <Link to="/community" className="text-slate-600 hover:text-cyan-500 transition-colors">Cộng đồng</Link>
-          <button 
-            onClick={() => setShowSubscribeModal(true)}
-            className="glass-button px-5 py-2 rounded-full font-semibold text-cyan-600"
-          >
-            Đăng ký Nhận tin
-          </button>
+          {subscribedEmail ? (
+            <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-200 rounded-full">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span className="text-sm font-semibold text-emerald-700 truncate max-w-[160px]">{subscribedEmail}</span>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setShowSubscribeModal(true)}
+              className="glass-button px-5 py-2 rounded-full font-semibold text-cyan-600"
+            >
+              Đăng ký Nhận tin
+            </button>
+          )}
         </div>
 
         <button className="md:hidden text-slate-800" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
@@ -131,12 +138,19 @@ const Navbar = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolean)
               <Link to="/#semi-news" onClick={() => setMobileMenuOpen(false)} className="text-slate-600 hover:text-cyan-500">Tin tức Bán dẫn</Link>
               <Link to="/#ai-news" onClick={() => setMobileMenuOpen(false)} className="text-slate-600 hover:text-cyan-500">Tin tức AI</Link>
               <Link to="/community" onClick={() => setMobileMenuOpen(false)} className="text-slate-600 hover:text-cyan-500">Cộng đồng</Link>
-              <button 
-                onClick={() => { setMobileMenuOpen(false); setShowSubscribeModal(true); }}
-                className="w-full mt-2 bg-cyan-50 text-cyan-700 px-5 py-3 rounded-xl font-bold border border-cyan-100"
-              >
-                Đăng ký Nhận tin
-              </button>
+              {subscribedEmail ? (
+                <div className="w-full mt-2 bg-emerald-50 text-emerald-700 px-5 py-3 rounded-xl font-bold border border-emerald-100 text-center flex items-center justify-center gap-2">
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                  {subscribedEmail}
+                </div>
+              ) : (
+                <button 
+                  onClick={() => { setMobileMenuOpen(false); setShowSubscribeModal(true); }}
+                  className="w-full mt-2 bg-cyan-50 text-cyan-700 px-5 py-3 rounded-xl font-bold border border-cyan-100"
+                >
+                  Đăng ký Nhận tin
+                </button>
+              )}
             </div>
           </motion.div>
         )}
@@ -145,7 +159,7 @@ const Navbar = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolean)
   );
 };
 
-const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSubscribeModal: boolean, setShowSubscribeModal: (s: boolean) => void }) => {
+const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal, onSubscribed }: { showSubscribeModal: boolean, setShowSubscribeModal: (s: boolean) => void, onSubscribed: (email: string) => void }) => {
   const [sendingOtp, setSendingOtp] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [email, setEmail] = useState('');
@@ -177,6 +191,7 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSub
     try {
       await seoBridge.registerUser(email, code);
       setStatus('success');
+      onSubscribed(email);
       setTimeout(() => {
         setShowSubscribeModal(false);
         setEmail('');
@@ -495,7 +510,7 @@ const Footer = () => (
 
 // --- Page Layouts --- //
 
-const HomePage = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolean) => void }) => {
+const HomePage = ({ setShowSubscribeModal, subscribedEmail }: { setShowSubscribeModal: (s: boolean) => void, subscribedEmail: string }) => {
   const handleExploreClick = () => {
     const el = document.getElementById('foundational-docs');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -503,7 +518,7 @@ const HomePage = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolea
 
   return (
     <>
-      <Navbar setShowSubscribeModal={setShowSubscribeModal} />
+      <Navbar setShowSubscribeModal={setShowSubscribeModal} subscribedEmail={subscribedEmail} />
       <Hero onExploreClick={handleExploreClick} />
       <ContentSections />
       <Footer />
@@ -513,6 +528,12 @@ const HomePage = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolea
 
 function App() {
   const [showSubscribeModal, setShowSubscribeModal] = useState(false);
+  const [subscribedEmail, setSubscribedEmail] = useState(() => localStorage.getItem('subscribedEmail') || '');
+
+  const handleSubscribed = (email: string) => {
+    setSubscribedEmail(email);
+    localStorage.setItem('subscribedEmail', email);
+  };
 
   return (
     <AuthProvider>
@@ -521,10 +542,10 @@ function App() {
           <BrowserRouter>
             <ScrollRestorationHelper />
             <div className="min-h-screen font-sans selection:bg-cyan-200 selection:text-slate-900 bg-slate-50 text-slate-800">
-              <SubscribeModal showSubscribeModal={showSubscribeModal} setShowSubscribeModal={setShowSubscribeModal} />
+              <SubscribeModal showSubscribeModal={showSubscribeModal} setShowSubscribeModal={setShowSubscribeModal} onSubscribed={handleSubscribed} />
               
               <Routes>
-                <Route path="/" element={<HomePage setShowSubscribeModal={setShowSubscribeModal} />} />
+                <Route path="/" element={<HomePage setShowSubscribeModal={setShowSubscribeModal} subscribedEmail={subscribedEmail} />} />
                 <Route path="/article/:id" element={<ArticlePage />} />
                 <Route path="/category/:id" element={<CategoryPage />} />
                 <Route path="/community" element={<CommunityPage />} />
