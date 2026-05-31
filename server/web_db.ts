@@ -59,6 +59,15 @@ export const webDb = new sqlite3.Database(dbPath, (err) => {
           subscribedAt TEXT
         )
       `);
+      
+      // OTPs
+      webDb.run(`
+        CREATE TABLE IF NOT EXISTS otps (
+          email TEXT PRIMARY KEY,
+          code TEXT,
+          expiresAt INTEGER
+        )
+      `);
     });
   }
 });

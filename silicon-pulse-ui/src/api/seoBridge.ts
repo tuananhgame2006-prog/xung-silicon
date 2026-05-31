@@ -55,17 +55,39 @@ export const seoBridge = {
   },
 
   /**
+   * Request OTP for registration.
+   */
+  async requestOTP(email: string): Promise<{ success: boolean }> {
+    try {
+      console.log('Requesting OTP for:', email);
+      const response = await fetch(`${API_BASE_URL}/request-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (!response.ok) throw new Error('Failed to request OTP');
+      return { success: true };
+    } catch (error) {
+      console.error('OTP request failed:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Register user for the newsletter.
    */
-  async registerUser(email: string): Promise<{ success: boolean }> {
+  async registerUser(email: string, code: string): Promise<{ success: boolean }> {
     try {
       console.log('Registering user email:', email);
       const response = await fetch(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email, code })
       });
-      if (!response.ok) throw new Error('Failed to register user');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to register user');
+      }
       return { success: true };
     } catch (error) {
       console.error('Registration failed:', error);
@@ -180,6 +202,55 @@ export const seoBridge = {
       return { success: true, message: data.message };
     } catch (error) {
       console.error('Delete failed:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create Community Post
+   */
+  async createCommunityPost(postData: any): Promise<{ success: boolean; id: string }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/community/post`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(postData)
+      });
+      if (!response.ok) throw new Error('Failed to create post');
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to create post:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Fetch Community Posts
+   */
+  async getCommunityPosts(): Promise<any[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/community/posts`);
+      if (!response.ok) throw new Error('Failed to fetch posts');
+      return await response.json();
+    } catch (error) {
+      console.error('Failed to fetch posts:', error);
+      return [];
+    }
+  },
+
+  /**
+   * Delete Community Post (Admin)
+   */
+  async deleteCommunityPost(postId: string, token: string): Promise<{ success: boolean }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/community/post/${postId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!response.ok) throw new Error('Failed to delete community post');
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to delete community post:', error);
       throw error;
     }
   },

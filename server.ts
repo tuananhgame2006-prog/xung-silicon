@@ -8,6 +8,7 @@ import jwt from 'jsonwebtoken';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import xss from 'xss';
+import nodemailer from 'nodemailer';
 import { query, run } from './server/web_db.js';
 
 dotenv.config({ path: '.env.local' }); // Load .env.local for ADMIN_EMAIL, ADMIN_PASSWORD, JWT_SECRET
@@ -54,10 +55,44 @@ const apiLimiter = rateLimit({
 app.use('/api/', apiLimiter);
 
 // -------------------------------------------------------------
-// MAILER CONFIGURATION (REMOVED)
+// MAILER CONFIGURATION
 // -------------------------------------------------------------
+const SMTP_USER = process.env.SMTP_USER || 'tuananhgame2006@gmail.com';
+const SMTP_PASS = process.env.SMTP_PASS || '';
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+  },
+});
 
-// -------------------------------------------------------------
+app.post('/api/request-otp', apiLimiter, async (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) return res.status(400).json({ error: 'Email không hợp lệ.' });
+  const cleanEmail = xss(email);
+  const code = Math.floor(1000 + Math.random() * 9000).toString(); // 4 digits
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins
+  try {
+    await run('INSERT INTO otps (email, code, expiresAt) VALUES (?, ?, ?) ON CONFLICT(email) DO UPDATE SET code=excluded.code, expiresAt=excluded.expiresAt', [cleanEmail, code, expiresAt]);
+    if (SMTP_PASS) {
+      await transporter.sendMail({
+        from: `"Nhịp đập Công Nghệ" <${SMTP_USER}>`,
+        to: cleanEmail,
+        subject: "Mã xác nhận OTP - Nhịp đập Công Nghệ",
+        text: `Mã xác nhận của bạn là: ${code}. Mã có hiệu lực trong 5 phút. Vui lòng không chia sẻ mã này.`,
+      });
+      res.json({ success: true, message: 'OTP sent' });
+    } else {
+      res.status(500).json({ error: 'Máy chủ chưa cấu hình Email SMTP.' });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Không thể tạo OTP.' });
+  }
+});
+
 // MIDDLEWARE: JWT AUTHENTICATION
 // -------------------------------------------------------------
 const verifyToken = (req: any, res: any, next: any) => {
@@ -186,14 +221,31 @@ app.get('/api/community/posts', async (req, res) => {
   }
 });
 
+app.delete('/api/community/post/:id', verifyToken, async (req, res) => {
+  try {
+    await run('DELETE FROM community_comments WHERE postId = ?', [req.params.id]);
+    await run('DELETE FROM community_posts WHERE id = ?', [req.params.id]);
+    res.json({ success: true, message: 'Đã xóa bài đăng.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 app.post('/api/register', apiLimiter, async (req, res) => {
-  const { email } = req.body;
+  const { email, code } = req.body;
   if (!email || !email.includes('@')) {
     return res.status(400).json({ error: 'Email không hợp lệ.' });
   }
   const cleanEmail = xss(email);
-  try {
+    if (!code) {
+      return res.status(400).json({ error: 'Thiếu mã xác nhận.' });
+    }
+    const otps = await query('SELECT * FROM otps WHERE email = ?', [cleanEmail]);
+    if (otps.length === 0 || otps[0].code !== code || otps[0].expiresAt < Date.now()) {
+      return res.status(400).json({ error: 'Mã xác nhận không đúng hoặc đã hết hạn.' });
+    }
     await run('INSERT INTO subscribers (email, subscribedAt) VALUES (?, ?)', [cleanEmail, new Date().toISOString()]);
+    await run('DELETE FROM otps WHERE email = ?', [cleanEmail]);
     res.json({ success: true, message: 'Đăng ký nhận bản tin thành công!' });
   } catch (err: any) {
     if (err.message && err.message.includes('UNIQUE')) {
@@ -201,6 +253,21 @@ app.post('/api/register', apiLimiter, async (req, res) => {
     } else {
       res.status(500).json({ error: 'Lỗi cơ sở dữ liệu.' });
     }
+  }
+});
+
+app.post('/api/verify-registration', apiLimiter, async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) return res.status(400).json({ error: 'Thiếu thông tin.' });
+  try {
+    const otps = await query('SELECT * FROM otps WHERE email = ?', [xss(email)]);
+    if (otps.length === 0 || otps[0].code !== code || otps[0].expiresAt < Date.now()) {
+      return res.status(400).json({ error: 'Mã xác nhận không đúng hoặc đã hết hạn.' });
+    }
+    await run('DELETE FROM otps WHERE email = ?', [xss(email)]);
+    res.json({ success: true, message: 'Xác thực thành công.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi cơ sở dữ liệu.' });
   }
 });
 

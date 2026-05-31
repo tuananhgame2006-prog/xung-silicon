@@ -54,12 +54,18 @@ export const CommunityPage = () => {
   
   const { showToast } = useToast();
   const { confirmAction } = useConfirm();
-  const { isAdmin } = useAuth();
+  const { isAdmin, token } = useAuth();
 
-  const handleAdminDeletePost = (postId: number) => {
-    confirmAction('Xóa bài đăng này?', () => {
-      setPosts(prev => prev.filter(p => p.id !== postId));
-      showToast('Đã xóa bài đăng (Dữ liệu ảo).');
+  const handleAdminDeletePost = async (postId: number | string) => {
+    if (!token) return;
+    confirmAction('Xóa bài đăng này vĩnh viễn?', async () => {
+      try {
+        await seoBridge.deleteCommunityPost(postId.toString(), token);
+        setPosts(prev => prev.filter(p => p.id !== postId));
+        showToast('Đã xóa bài đăng.');
+      } catch {
+        showToast('Xóa thất bại.');
+      }
     });
   };
 
@@ -93,89 +99,63 @@ export const CommunityPage = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
   
-  const [posts, setPosts] = useState<PostType[]>([
-    {
-      id: 1,
-      category: 'ban-dan',
-      author: 'Nguyễn Văn Minh',
-      authorRole: 'Kỹ sư Thiết kế Vi mạch, Marvell',
-      time: '2 giờ trước',
-      content: 'Mọi người nghĩ sao về kiến trúc Vera Rubin mới của Nvidia? Tích hợp HBM4 trực tiếp lên đế chip có vẻ sẽ tạo ra thách thức tản nhiệt khổng lồ. Có ai từng làm mô phỏng nhiệt (thermal simulation) cho các chip >1000W chưa?',
-      likes: 45,
-      userReaction: null,
-      comments: [
-        {
-          id: 101,
-          author: 'Lê Hoàng',
-          time: '1 giờ trước',
-          content: 'Mình đang làm R&D cho tản nhiệt chất lỏng (Liquid Cooling) đây. Ở ngưỡng >1000W thì tản khí truyền thống coi như bỏ. Chắc chắn NVIDIA phải ép các Data Center nâng cấp hệ thống làm mát.',
-          likes: 12,
-          isLiked: false,
-          replies: [
-            {
-              id: 1011,
-              author: 'Nguyễn Văn Minh',
-              time: '45 phút trước',
-              content: 'Đồng ý với bác, nhưng mật độ bóng bán dẫn quá cao ở TSMC 3nm/2nm cũng khiến việc tản nhiệt điểm (Hotspot) cực khó.',
-              likes: 4,
-              isLiked: false,
-              replies: []
-            }
-          ]
-        }
-      ]
-    },
-    {
-      id: 2,
-      category: 'ai',
-      author: 'Trần Thị Hà',
-      authorRole: 'Nghiên cứu sinh AI, ĐH Quốc gia',
-      time: '5 giờ trước',
-      content: 'Tin vui! Mình vừa bảo vệ thành công luận án về tối ưu hóa Transformer bằng cơ chế Sparse Attention. Cảm ơn Nhịp đập Công Nghệ vì bài báo "Attention Is All You Need" bản dịch cực chuẩn. Bạn nào cần tham khảo source code PyTorch thì ping mình nhé!',
-      image: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=800&q=80',
-      likes: 128,
-      userReaction: 'like',
-      comments: [
-        {
-          id: 201,
-          author: 'Phạm Tuấn',
-          time: '3 giờ trước',
-          content: 'Chúc mừng Hà nhé! Tuyệt vời quá 🚀',
-          likes: 5,
-          isLiked: true,
-          replies: []
-        }
-      ]
-    }
-  ]);
+  const [posts, setPosts] = useState<PostType[]>([]);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const data = await seoBridge.getCommunityPosts();
+        // ensure format fits PostType, comments need to be [] if undefined
+        const formattedData = data.map(p => ({
+          ...p,
+          comments: p.comments || [],
+          userReaction: null,
+          likes: p.likes || 0
+        }));
+        setPosts(formattedData);
+      } catch (err) {
+        console.error("Failed to load posts", err);
+      }
+    };
+    fetchPosts();
+  }, []);
 
   const handlePostFocus = () => {
     if (!currentUser) setIsAuthOpen(true);
   };
 
-  const handlePostSubmit = () => {
+  const handlePostSubmit = async () => {
     if (!currentUser) {
       setIsAuthOpen(true);
       return;
     }
     if (!newPostContent.trim() && !attachedImage) return;
     
-    const newPost: PostType = {
-      id: Date.now(),
+    const postData = {
       category: activeTab === 'chung' ? 'chung' : activeTab,
       author: currentUser.name,
-      authorRole: 'Thành viên Nhịp đập Công Nghệ',
-      time: 'Vừa xong',
+      authorRole: 'Thành viên Cộng đồng',
       content: newPostContent,
       image: attachedImage || undefined,
-      likes: 0,
-      userReaction: null,
-      comments: []
     };
-    setPosts([newPost, ...posts]);
-    setNewPostContent('');
-    setAttachedImage(null);
-    showToast('Đã xuất bản bài viết thành công!');
+
+    try {
+      const res = await seoBridge.createCommunityPost(postData);
+      const newPost: PostType = {
+        id: res.id as any,
+        ...postData,
+        time: 'Vừa xong',
+        likes: 0,
+        userReaction: null,
+        comments: []
+      };
+      setPosts([newPost, ...posts]);
+      setNewPostContent('');
+      setAttachedImage(null);
+      showToast('Đã xuất bản bài viết thành công!');
+    } catch {
+      showToast('Có lỗi xảy ra khi đăng bài.');
+    }
   };
 
   const handleReaction = (id: number, type: ReactionType) => {

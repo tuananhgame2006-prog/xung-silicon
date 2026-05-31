@@ -146,7 +146,9 @@ const Navbar = ({ setShowSubscribeModal }: { setShowSubscribeModal: (s: boolean)
 };
 
 const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSubscribeModal: boolean, setShowSubscribeModal: (s: boolean) => void }) => {
+  const [step, setStep] = useState<'email' | 'code'>('email');
   const [email, setEmail] = useState('');
+  const [code, setCode] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -155,16 +157,32 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSub
     setStatus('loading');
     setErrorMessage('');
     try {
-      await seoBridge.registerUser(email);
+      await seoBridge.requestOTP(email);
+      setStep('code');
+      setStatus('idle');
+    } catch {
+      setStatus('error');
+      setErrorMessage('Không thể gửi OTP. Vui lòng kiểm tra lại email.');
+    }
+  };
+
+  const handleCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('loading');
+    setErrorMessage('');
+    try {
+      await seoBridge.registerUser(email, code);
       setStatus('success');
       setTimeout(() => {
         setShowSubscribeModal(false);
+        setStep('email');
         setEmail('');
+        setCode('');
         setStatus('idle');
       }, 2000);
-    } catch {
+    } catch (err: any) {
       setStatus('error');
-      setErrorMessage('Không thể gửi yêu cầu đăng ký.');
+      setErrorMessage(err.message || 'Xác nhận thất bại.');
     }
   };
 
@@ -184,7 +202,9 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSub
             <button onClick={() => {
               setShowSubscribeModal(false);
               setTimeout(() => {
+                setStep('email');
                 setEmail('');
+                setCode('');
                 setStatus('idle');
                 setErrorMessage('');
               }, 300);
@@ -201,34 +221,59 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal }: { showSub
             ) : (
               <>
                 <h3 className="font-serif text-3xl mb-2 text-cyan-600">
-                  Nhận bản tin chuyên sâu
+                  {step === 'email' ? 'Nhận bản tin chuyên sâu' : 'Xác nhận Email'}
                 </h3>
                 <p className="text-sm text-slate-500 mb-6 font-sans">
-                  Cập nhật các phân tích độc quyền về công nghệ lõi bán dẫn và AI trực tiếp vào hộp thư của bạn.
+                  {step === 'email' 
+                    ? 'Cập nhật các phân tích độc quyền về công nghệ lõi bán dẫn và AI trực tiếp vào hộp thư của bạn.' 
+                    : `Chúng tôi đã gửi mã xác nhận 4 chữ số đến email ${email}. Vui lòng kiểm tra hộp thư (và thư rác).`}
                 </p>
                 {errorMessage && (
                   <div className="mb-4 p-3 bg-rose-50 text-rose-600 text-sm rounded-lg border border-rose-100">
                     {errorMessage}
                   </div>
                 )}
-                <form onSubmit={handleEmailSubmit}>
-                  <input 
-                    type="email" 
-                    placeholder="Địa chỉ Email của bạn" 
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full glass-input px-4 py-3 rounded-lg mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    disabled={status === 'loading'}
-                  />
-                  <button 
-                    type="submit" 
-                    disabled={status === 'loading'}
-                    className="w-full bg-cyan-500 text-white font-bold py-3 rounded-lg hover:bg-cyan-400 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 shadow-md shadow-cyan-500/20"
-                  >
-                    {status === 'loading' ? <Loader2 className="animate-spin" size={20} /> : 'Tiếp tục'}
-                  </button>
-                </form>
+                {step === 'email' ? (
+                  <form onSubmit={handleEmailSubmit}>
+                    <input 
+                      type="email" 
+                      placeholder="Địa chỉ Email của bạn" 
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full glass-input px-4 py-3 rounded-lg mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      disabled={status === 'loading'}
+                    />
+                    <button 
+                      type="submit" 
+                      disabled={status === 'loading'}
+                      className="w-full bg-cyan-500 text-white font-bold py-3 rounded-lg hover:bg-cyan-400 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 shadow-md shadow-cyan-500/20"
+                    >
+                      {status === 'loading' ? <Loader2 className="animate-spin" size={20} /> : 'Tiếp tục'}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleCodeSubmit}>
+                    <input 
+                      type="text" 
+                      placeholder="Nhập mã 4 chữ số" 
+                      required
+                      maxLength={4}
+                      pattern="\d{4}"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value)}
+                      className="w-full glass-input px-4 py-3 rounded-lg mb-4 text-center text-2xl tracking-widest font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      disabled={status === 'loading'}
+                    />
+                    <button 
+                      type="submit" 
+                      disabled={status === 'loading' || code.length !== 4}
+                      className="w-full bg-cyan-500 text-white font-bold py-3 rounded-lg hover:bg-cyan-400 transition-colors flex justify-center items-center gap-2 disabled:opacity-50 shadow-md shadow-cyan-500/20"
+                    >
+                      {status === 'loading' ? <Loader2 className="animate-spin" size={20} /> : 'Xác nhận & Đăng ký'}
+                    </button>
+                  </form>
+                )}
               </>
             )}
           </motion.div>
