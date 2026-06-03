@@ -310,6 +310,138 @@ const SubscribeModal = ({ showSubscribeModal, setShowSubscribeModal, onSubscribe
   );
 };
 
+const ContributeModal = ({ showModal, setShowModal }: { showModal: boolean, setShowModal: (s: boolean) => void }) => {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [formData, setFormData] = useState({
+    title: '',
+    category: 'ai-news',
+    authorEmail: '',
+    content: ''
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('loading');
+    setErrorMessage('');
+    try {
+      await seoBridge.submitArticleForApproval(formData);
+      setStatus('success');
+      setTimeout(() => {
+        setShowModal(false);
+        setStatus('idle');
+        setFormData({ title: '', category: 'ai-news', authorEmail: '', content: '' });
+      }, 3000);
+    } catch (err: any) {
+      setStatus('error');
+      setErrorMessage('Không thể gửi bài viết. ' + (err.message || ''));
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {showModal && (
+        <motion.div 
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm px-4 py-8 overflow-y-auto"
+        >
+          <motion.div 
+            initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="glass-panel p-8 rounded-2xl w-full max-w-2xl relative bg-white shadow-2xl my-auto"
+          >
+            <button onClick={() => setShowModal(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 bg-slate-100 rounded-full p-1">
+              <X size={20} />
+            </button>
+            
+            {status === 'success' ? (
+              <div className="text-center py-10">
+                <CheckCircle className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
+                <h3 className="font-serif text-3xl text-slate-800 mb-2">Đã Gửi Thành Công!</h3>
+                <p className="text-slate-500 text-lg">Bài viết của bạn đã được gửi đi và đang chờ Ban biên tập xét duyệt.</p>
+              </div>
+            ) : (
+              <>
+                <h3 className="font-serif text-3xl mb-2 text-cyan-700 flex items-center gap-3">
+                  <BookOpen className="text-cyan-500" size={28} /> Đóng Góp Bài Viết
+                </h3>
+                <p className="text-slate-500 mb-6 font-sans">
+                  Chia sẻ kiến thức, phân tích chuyên sâu về công nghệ lõi và vi mạch. Bài viết sẽ được duyệt trước khi xuất bản.
+                </p>
+                {errorMessage && (
+                  <div className="mb-4 p-3 bg-rose-50 text-rose-600 rounded-lg border border-rose-100">
+                    {errorMessage}
+                  </div>
+                )}
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">Tiêu đề bài viết <span className="text-rose-500">*</span></label>
+                    <input 
+                      type="text" 
+                      required
+                      value={formData.title}
+                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                      className="w-full glass-input px-4 py-3 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      disabled={status === 'loading'}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">Chuyên mục <span className="text-rose-500">*</span></label>
+                      <select 
+                        value={formData.category}
+                        onChange={(e) => setFormData({...formData, category: e.target.value})}
+                        className="w-full glass-input px-4 py-3 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        disabled={status === 'loading'}
+                      >
+                        <option value="ai-news">Tin tức AI</option>
+                        <option value="semi-news">Tin tức Bán dẫn</option>
+                        <option value="foundational">Tài liệu Nền tảng</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">Email của bạn (Để liên hệ) <span className="text-rose-500">*</span></label>
+                      <input 
+                        type="email" 
+                        required
+                        value={formData.authorEmail}
+                        onChange={(e) => setFormData({...formData, authorEmail: e.target.value})}
+                        className="w-full glass-input px-4 py-3 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        disabled={status === 'loading'}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 mb-1.5 uppercase">Nội dung (Hỗ trợ Markdown) <span className="text-rose-500">*</span></label>
+                    <textarea 
+                      required
+                      rows={8}
+                      value={formData.content}
+                      onChange={(e) => setFormData({...formData, content: e.target.value})}
+                      className="w-full glass-input px-4 py-3 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-none font-mono text-sm"
+                      disabled={status === 'loading'}
+                      placeholder="Nhập nội dung bài viết của bạn tại đây..."
+                    />
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={status === 'loading'}
+                    className="w-full mt-6 bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold py-4 rounded-xl hover:shadow-lg hover:shadow-cyan-500/30 transition-all flex justify-center items-center gap-2 disabled:opacity-50"
+                  >
+                    {status === 'loading' ? <Loader2 className="animate-spin" size={20} /> : 'Gửi Bài Để Xét Duyệt'}
+                  </button>
+                </form>
+              </>
+            )}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+};
+
 const Hero = ({ onExploreClick }: { onExploreClick: () => void }) => {
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden bg-slate-50">
@@ -512,6 +644,7 @@ const Footer = () => (
 // --- Page Layouts --- //
 
 const HomePage = ({ setShowSubscribeModal, subscribedEmail }: { setShowSubscribeModal: (s: boolean) => void, subscribedEmail: string }) => {
+  const [showContributeModal, setShowContributeModal] = useState(false);
   const handleExploreClick = () => {
     const el = document.getElementById('foundational-docs');
     if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -522,6 +655,18 @@ const HomePage = ({ setShowSubscribeModal, subscribedEmail }: { setShowSubscribe
       <Navbar setShowSubscribeModal={setShowSubscribeModal} subscribedEmail={subscribedEmail} />
       <Hero onExploreClick={handleExploreClick} />
       <ContentSections />
+      
+      {/* Floating Action Button cho Đóng góp bài viết */}
+      <div className="fixed bottom-8 right-8 z-40">
+        <button 
+          onClick={() => setShowContributeModal(true)}
+          className="bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 px-5 rounded-full shadow-lg shadow-emerald-500/30 flex items-center gap-2 transition-all hover:-translate-y-1"
+        >
+          <BookOpen size={20} /> Đóng Góp Bài Viết
+        </button>
+      </div>
+      
+      <ContributeModal showModal={showContributeModal} setShowModal={setShowContributeModal} />
       <Footer />
     </>
   );

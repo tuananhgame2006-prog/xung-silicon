@@ -248,6 +248,109 @@ app.post('/api/submit', async (req, res) => {
   }
 });
 
+// -------------------------------------------------------------
+// API: ARTICLE STATS (Like, View)
+// -------------------------------------------------------------
+app.post('/api/article/:id/like', async (req, res) => {
+  const id = xss(req.params.id);
+  try {
+    await run('INSERT INTO article_stats (articleId, likes, views) VALUES (?, 1, 0) ON CONFLICT(articleId) DO UPDATE SET likes = likes + 1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.post('/api/article/:id/view', async (req, res) => {
+  const id = xss(req.params.id);
+  try {
+    await run('INSERT INTO article_stats (articleId, likes, views) VALUES (?, 0, 1) ON CONFLICT(articleId) DO UPDATE SET views = views + 1', [id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.get('/api/article/:id/stats', async (req, res) => {
+  const id = xss(req.params.id);
+  try {
+    const stats = await query('SELECT likes, views FROM article_stats WHERE articleId = ?', [id]);
+    if (stats.length > 0) {
+      res.json(stats[0]);
+    } else {
+      res.json({ likes: 0, views: 0 });
+    }
+  } catch (err) {
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// -------------------------------------------------------------
+// API: SEO BOT GATEWAY (Publish & Stats Sync)
+// -------------------------------------------------------------
+app.get('/api/bot-publish', async (req, res) => {
+  // Lấy dữ liệu thống kê cho Bot
+  const authHeader = req.headers.authorization;
+  const BOT_SECRET = process.env.BOT_API_KEY || 'dikebinhlieu'; 
+  
+  if (!authHeader || authHeader !== `Bearer ${BOT_SECRET}`) {
+    return res.status(401).json({ error: 'Truy cập bị từ chối. Sai mã bảo mật!' });
+  }
+
+  try {
+    const stats = await query('SELECT articleId, likes, views FROM article_stats');
+    res.json({ stats });
+  } catch (err) {
+    res.status(500).json({ error: 'Lỗi cơ sở dữ liệu.' });
+  }
+});
+
+app.post('/api/bot-publish', async (req, res) => {
+  // 1. Kiểm tra API Secret Key (Mã số ký tự từ Bot)
+  const authHeader = req.headers.authorization;
+  const BOT_SECRET = process.env.BOT_API_KEY || 'dikebinhlieu'; 
+  
+  if (!authHeader || authHeader !== `Bearer ${BOT_SECRET}`) {
+    return res.status(401).json({ error: 'Truy cập bị từ chối. Sai mã bảo mật!' });
+  }
+
+  // 2. Nhận dữ liệu từ Bot
+  const { title, content, category, author } = req.body;
+  const id = `article-bot-${Date.now()}`;
+  
+  // 3. Xử lý và lưu trực tiếp vào Database với trạng thái "approved" (Đã duyệt)
+  const cleanTitle = xss(title);
+  const cleanContent = xss(content); 
+  const cleanCategory = xss(category || 'AI News');
+  const cleanAuthor = xss(author || 'Agent SEO Bot');
+
+  try {
+    await run(
+      'INSERT INTO pending_articles (id, title, excerpt, content, category, author, publishDate, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        id, 
+        cleanTitle, 
+        cleanTitle.substring(0, 100) + '...', 
+        cleanContent, 
+        cleanCategory, 
+        cleanAuthor, 
+        new Date().toISOString(),
+        'approved' // Bỏ qua duyệt
+      ]
+    );
+    
+    // Khởi tạo stats mặc định bằng 0 để Bot luôn lấy được dữ liệu ngay cả khi chưa có view nào
+    await run('INSERT INTO article_stats (articleId, likes, views) VALUES (?, 0, 0)', [id]);
+    
+    // Trả về toàn bộ danh sách thống kê để bot đồng bộ
+    const stats = await query('SELECT articleId, likes, views FROM article_stats');
+    res.json({ success: true, message: 'Đăng bài tự động thành công!', articleId: id, stats });
+  } catch (err) {
+    console.error("Bot Publish Error:", err);
+    res.status(500).json({ error: 'Lỗi cơ sở dữ liệu khi bot đăng bài.' });
+  }
+});
+
 app.get('/api/admin/pending-articles', verifyToken, async (req, res) => {
   try {
     const articles = await query('SELECT * FROM pending_articles WHERE status = "pending"');

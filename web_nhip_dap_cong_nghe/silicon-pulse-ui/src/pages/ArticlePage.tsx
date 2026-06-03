@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { mockArticles } from '../data/mockArticles';
-import { ArrowLeft, Clock, Download, Share2, Bookmark, CheckCircle2, ChevronRight, Cpu, Focus, Zap, X } from 'lucide-react';
+import { ArrowLeft, Clock, Download, Share2, Bookmark, CheckCircle2, ChevronRight, Cpu, Focus, Zap, X, Heart, Eye } from 'lucide-react';
 import { useToast } from '../components/ToastContext';
 import { useAuth } from '../components/AuthContext';
 import { useConfirm } from '../components/ConfirmContext';
@@ -16,6 +16,8 @@ export const ArticlePage = () => {
   const [activeHeading, setActiveHeading] = useState<string>('');
   const [headings, setHeadings] = useState<{id: string, title: string}[]>([]);
   const [isBookmarked, setIsBookmarked] = useState(false);
+  const [stats, setStats] = useState({ likes: 0, views: 0 });
+  const [isLiked, setIsLiked] = useState(false);
   
   // Breakthrough States
   const [isZenMode, setIsZenMode] = useState(false);
@@ -60,6 +62,15 @@ export const ArticlePage = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, [id]);
+
+  // Fetch Stats and Increment View
+  useEffect(() => {
+    if (article) {
+      seoBridge.viewArticle(article.id).then(() => {
+        seoBridge.getArticleStats(article.id).then(setStats);
+      });
+    }
+  }, [article?.id]);
 
   // Pre-process HTML content for Bionic Reading and IDs safely in memory
   const processedHtml = React.useMemo(() => {
@@ -189,6 +200,14 @@ export const ArticlePage = () => {
     }
   };
 
+  const handleLike = async () => {
+    if (!article || isLiked) return;
+    setIsLiked(true);
+    setStats(prev => ({ ...prev, likes: prev.likes + 1 }));
+    await seoBridge.likeArticle(article.id);
+    showToast('Bạn đã thích bài viết này! ❤️');
+  };
+
   return (
     <div className={`min-h-screen font-sans pb-32 transition-colors duration-1000 ${isZenMode ? 'bg-slate-950 text-slate-300' : 'bg-slate-50 text-slate-800'}`}>
       
@@ -266,8 +285,20 @@ export const ArticlePage = () => {
               <div className="flex flex-col gap-2 text-xs text-slate-400 uppercase tracking-wide font-bold">
                 <span className="flex items-center gap-2"><Clock size={14} className="text-cyan-500"/> {article.readTime}</span>
                 <span className="flex items-center gap-2 text-slate-400"><span className="w-3 h-3 rounded-full bg-slate-200 inline-block mr-0.5"></span> {article.date}</span>
+                <div className="flex items-center gap-4 mt-2">
+                  <span className="flex items-center gap-1.5"><Eye size={14} className="text-cyan-500"/> {stats.views} Lượt xem</span>
+                  <span className="flex items-center gap-1.5"><Heart size={14} className="text-rose-500"/> {stats.likes} Thích</span>
+                </div>
               </div>
             </div>
+
+            <button 
+              onClick={handleLike} 
+              disabled={isLiked}
+              className={`w-full flex items-center justify-center gap-2 py-3.5 px-5 rounded-xl font-bold transition-all shadow-sm mb-4 ${isLiked ? 'bg-rose-50 text-rose-500 border border-rose-200' : 'bg-white border border-rose-200 text-rose-500 hover:bg-rose-500 hover:text-white hover:shadow-rose-500/30 shadow-md'}`}
+            >
+              <Heart size={18} className={isLiked ? "fill-current" : ""} /> {isLiked ? 'Đã Thích' : 'Thích Bài Viết'}
+            </button>
 
             {article.downloadPdf && (
               <a href={article.downloadPdf} onClick={handleDownload} className="w-full flex items-center justify-between group bg-slate-900 text-white py-3.5 px-5 rounded-xl font-medium hover:bg-slate-800 transition-all shadow-lg mb-6">

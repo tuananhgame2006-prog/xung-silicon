@@ -230,7 +230,7 @@ export const seoBridge = {
    */
   async getCommunityPosts(): Promise<any[]> {
     try {
-      const response = await fetch(`${API_BASE_URL}/community/posts`);
+      const response = await fetch(`${API_BASE_URL}/community/posts`, { cache: 'no-store' });
       if (!response.ok) throw new Error('Failed to fetch posts');
       return await response.json();
     } catch (error) {
@@ -295,6 +295,48 @@ export const seoBridge = {
       return [];
     } catch {
       return [];
+    }
+  },
+
+  /**
+   * Tăng lượt Thích bài viết
+   */
+  async likeArticle(articleId: string): Promise<{ success: boolean }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/article/${articleId}/like`, { method: 'POST' });
+      if (!response.ok) throw new Error('Lỗi khi Thích bài viết');
+      return await response.json();
+    } catch (error) {
+      console.error(error);
+      return { success: false };
+    }
+  },
+
+  /**
+   * Tăng lượt Xem bài viết
+   */
+  async viewArticle(articleId: string): Promise<{ success: boolean }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/article/${articleId}/view`, { method: 'POST' });
+      if (!response.ok) throw new Error('Lỗi khi tăng Lượt xem');
+      return await response.json();
+    } catch (error) {
+      console.error(error);
+      return { success: false };
+    }
+  },
+
+  /**
+   * Lấy thống kê (Like, View) của 1 bài viết
+   */
+  async getArticleStats(articleId: string): Promise<{ likes: number, views: number }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/article/${articleId}/stats`);
+      if (!response.ok) throw new Error('Lỗi khi lấy thống kê');
+      return await response.json();
+    } catch (error) {
+      console.error(error);
+      return { likes: 0, views: 0 };
     }
   }
 };

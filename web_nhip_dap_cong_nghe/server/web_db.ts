@@ -27,6 +27,15 @@ export const webDb = new sqlite3.Database(dbPath, (err) => {
         )
       `);
 
+      // Article Stats (Likes & Views)
+      webDb.run(`
+        CREATE TABLE IF NOT EXISTS article_stats (
+          articleId TEXT PRIMARY KEY,
+          likes INTEGER DEFAULT 0,
+          views INTEGER DEFAULT 0
+        )
+      `);
+
       // Hidden Articles (Admin deletions of mock articles)
       webDb.run(`
         CREATE TABLE IF NOT EXISTS hidden_articles (
